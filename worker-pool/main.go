@@ -1,41 +1,73 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 )
 
-type extendedUser struct {
-	user User
-	err  error
+type arg struct {
+	phoneMap map[string]string
+	u        User
+}
+
+func (a arg) phones() map[string]string {
+	return a.phoneMap
+}
+
+func (a arg) user() User {
+	return a.u
+}
+
+type jobArg interface {
+	phones() map[string]string
+	user() User
 }
 
 type User struct {
-	Id    string `id:"number"`
+	Id    int    `id:"number"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
 	Phone string
 }
 
-func addPhone(user User, phones map[string]string) (User, error) {
-	time.Sleep(500 * time.Millisecond)
-	phone, ok := phones[user.Name]
-	if !ok {
-		// todo handle err
+func addPhone(ctx context.Context, arg interface{}) (interface{}, error) {
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("cancell %w", ctx.Err())
+	default:
+		time.Sleep(500 * time.Millisecond)
+		jobArg, ok := arg.(jobArg)
+		if !ok {
+			return nil, fmt.Errorf("can't match argument interface")
+		}
+
+		user := jobArg.user()
+		phones := jobArg.phones()
+		phone, ok := phones[user.Name]
+		if !ok {
+			return nil, fmt.Errorf("can't match phone number by user name")
+		}
+
+		user.Phone = phone
+		return user, nil
 	}
-	user.Phone = phone
-	return user, nil
 }
 
-func handleUser(wg *sync.WaitGroup, input <-chan User, output chan<- extendedUser, phones map[string]string) {
-	defer wg.Done()
-	for user := range input {
-		user, err := addPhone(user, phones)
-		extUser := extendedUser{user: user, err: err}
-		output <- extUser
+func makeJobs(users []User, phones map[string]string) []Job {
+	const jType = "clients"
+	jobsBulk := make([]Job, len(users))
+	for i, user := range users {
+		arg := arg{u: user, phoneMap: phones}
+		job := NewJob(&JobDescriptor{
+			Type: jType,
+		},
+			addPhone,
+			arg)
+		jobsBulk[i] = job
 	}
+	return jobsBulk
 }
 
 func main() {
@@ -44,35 +76,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	inputCh := make(chan User)
-	go func() {
-		for i := range users {
-			inputCh <- users[i]
-		}
-		close(inputCh)
-	}()
+	wp := NewWp(5)
+	jobsBulk := makeJobs(users, phones)
+	go wp.GenerateFrom(jobsBulk)
 
-	outputCh := make(chan extendedUser)
-	const workerNum = 4
-	wg := sync.WaitGroup{}
-	go func() {
-		for i := 0; i < workerNum; i++ {
-			wg.Add(1)
-			go handleUser(&wg, inputCh, outputCh, phones)
-		}
-		wg.Wait()
-		close(outputCh)
-	}()
+	go wp.Run(context.Background())
 
-	outputs := make([]extendedUser, 0)
-	for extUser := range outputCh {
+	outputs := make([]Result, 0)
+	for res := range wp.Results() {
 		log.SetPrefix("error: ")
-		if extUser.err != nil {
-			log.Println(extUser.err)
+		if res.Err != nil {
+			log.Println(res.Err)
 			continue
 		}
-		outputs = append(outputs, extUser)
+		outputs = append(outputs, res)
 	}
 
-	fmt.Printf("done, clients count = %d", len(outputs))
+	fmt.Printf("done, job-type = %s, all count = %d", outputs[0].Descriptor.Type, len(outputs))
 }
