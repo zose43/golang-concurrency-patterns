@@ -17,7 +17,7 @@ func NewJob(descriptor *JobDescriptor, exec ExecutionFn, args interface{}) Job {
 
 func (j Job) execute(ctx context.Context) Result {
 	value, err := j.Exec(ctx, j.Args)
-	if value != nil {
+	if err != nil {
 		return Result{Descriptor: j.Descriptor, Err: err}
 	}
 	return Result{Descriptor: j.Descriptor, Value: value}
