@@ -20,7 +20,7 @@ func main() {
 		log.Fatalf("%q is not a link", link)
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
@@ -48,7 +48,7 @@ func process(ticker <-chan time.Time, link string, depth int, wg *sync.WaitGroup
 
 	title, links, err := Crawler(link)
 	if err != nil {
-		// todo check consistent errors
+		//todo check consistent errors
 		log.Printf("can't get title on page %q %s\n", link, err)
 	}
 	fmt.Printf("%s --> %q\n", link, title)
