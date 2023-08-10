@@ -23,20 +23,20 @@ func Crawler(link string) (string, []string, error) {
 	}
 	_ = body.Close()
 
-	title, links, err := scrapPage(doc, link, root(link))
+	title, links, err := scrapPage(doc, root(link))
 	if err != nil {
 		return "", nil, err
 	}
 	return title, links, nil
 }
 
-func scrapPage(doc *goquery.Document, link string, root string) (title string, links []string, err error) {
+func scrapPage(doc *goquery.Document, root string) (title string, links []string, err error) {
 	title = doc.Find("title").Text()
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		{
 			val, ok := s.Attr("href")
 			if ok {
-				val, err = checkUrl(val, link)
+				val, err = checkUrl(val, root)
 				if strings.Contains(val, root) {
 					links = append(links, val)
 				}
@@ -48,7 +48,6 @@ func scrapPage(doc *goquery.Document, link string, root string) (title string, l
 
 func checkUrl(link string, root string) (string, error) {
 	if !strings.Contains(link, "http") {
-		//todo fix path
 		full, err := url.JoinPath(root, link)
 		if err != nil {
 			return "", fmt.Errorf("can't join url %w", err)

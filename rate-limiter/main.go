@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -31,11 +31,8 @@ func main() {
 }
 
 func validateLink(link string) bool {
-	u, err := url.Parse(link)
-	if err != nil {
-		return false
-	}
-	return len(u.Scheme) > 0 && len(u.Path) > 0
+	res, _ := regexp.MatchString(`https?`, link)
+	return res
 }
 
 func process(ticker <-chan time.Time, link string, depth int, wg *sync.WaitGroup) {
@@ -57,5 +54,4 @@ func process(ticker <-chan time.Time, link string, depth int, wg *sync.WaitGroup
 	for i := range links {
 		go process(ticker, links[i], depth-1, wg)
 	}
-	return // why return?
 }
