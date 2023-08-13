@@ -16,8 +16,11 @@ func main() {
 		log.Fatal("not initialized list")
 	}
 
-	//streamCh := make(chan *Stream, 10)
+	streamCh := make(chan *Stream, 10)
 	done := make(chan struct{})
+
+	go producer(streamCh)
+	go consumer(streamCh, done)
 
 	<-done
 	fmt.Printf("process took %s\n", time.Since(start))
@@ -55,10 +58,22 @@ func init() {
 	}
 }
 
-func producer() {
-
+func producer(output chan<- *Stream) {
+	cur := list.head
+	for cur.next != nil {
+		cur = cur.next
+		output <- cur
+	}
+	close(output)
 }
 
-func consumer() {
-
+func consumer(input <-chan *Stream, done chan<- struct{}) {
+	for stream := range input {
+		if stream.timezone == "Europe/Moscow" {
+			fmt.Printf("%s %s central Russia airport\n",
+				stream.airport,
+				stream.city)
+		}
+	}
+	done <- struct{}{}
 }
