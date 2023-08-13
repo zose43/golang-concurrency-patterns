@@ -3,8 +3,9 @@ package main
 import "time"
 
 type Stream struct {
-	tweet    string
-	nickname string
+	airport  string
+	timezone string
+	city     string
 	date     time.Time
 	next     *Stream
 }
