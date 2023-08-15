@@ -8,25 +8,25 @@ import (
 // easily lru (least recently used) implementation
 
 type Node struct {
-	Data string
+	Data any
 	Ptr  *list.Element
 }
 
 type LRUCache struct {
 	Queue    *list.List
-	Items    map[int]*Node
+	Items    map[any]*Node
 	Capacity int
 	mutex    sync.Mutex
 }
 
-func (r *LRUCache) Put(key int, value string) {
+func (r *LRUCache) Put(key any, value any) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if item, ok := r.Items[key]; !ok {
 		if r.Capacity == r.Queue.Len() {
 			back := r.Queue.Back()
 			r.Queue.Remove(back)
-			delete(r.Items, back.Value.(int))
+			delete(r.Items, back.Value)
 		}
 		r.Items[key] = &Node{Data: value, Ptr: r.Queue.PushFront(key)}
 	} else {
@@ -36,20 +36,20 @@ func (r *LRUCache) Put(key int, value string) {
 	}
 }
 
-func (r *LRUCache) Get(key int) string {
+func (r *LRUCache) Get(key any) any {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if item, ok := r.Items[key]; ok {
 		r.Queue.MoveToFront(item.Ptr)
 		return item.Data
 	}
-	return ""
+	return nil
 }
 
 func NewLRUCache(capacity int) *LRUCache {
 	return &LRUCache{
 		Queue:    list.New(),
 		Capacity: capacity,
-		Items:    make(map[int]*Node),
+		Items:    make(map[any]*Node),
 	}
 }
