@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -13,7 +14,10 @@ func main() {
 	serv := NewService(5*time.Second, h)
 	serv.User = user
 
-	res := timeoutProcess(serv)
+	ctx, cancel := context.WithTimeout(context.TODO(), 4*time.Second)
+	defer cancel()
+
+	res := timeoutProcess(ctx, serv)
 	if res {
 		fmt.Println("done")
 	}
@@ -26,7 +30,7 @@ func getHost() string {
 	return host
 }
 
-func timeoutProcess(serv *Service) bool {
+func timeoutProcess(ctx context.Context, serv *Service) bool {
 	done := make(chan error)
 
 	go func() {
@@ -41,7 +45,7 @@ func timeoutProcess(serv *Service) bool {
 				return false
 			}
 			return true
-		case <-time.After(serv.AllowedDuration):
+		case <-ctx.Done():
 			if !serv.User.IsPremium {
 				log.Print("timeout")
 				return false
